@@ -6,7 +6,6 @@
 #'@param popID population ID to be evaluated (default: the latest population)
 #'@param locations integer vector of the locations where phenotyping occurs (e.g., c(1, 3) to phenotype at locations 1 and 3. Default: 1, phenotype at the first location)
 #'@param years integer vector of the years when phenotyping occurs (e.g., 1:2 to phenotype during the first two years of the breeding scheme. Default: the last year among previous phenotyping. NOTE: thus, to phenotype in a new [the next] year, specify the next year number [e.g., if past phenotyping was in years 1 & 2, specify 3]).
-#'@param parms an optional named list or vector. Objects with those names will be created with the corresponding values. A way to pass values that are not predetermined by the script.
 #'
 #'@seealso \code{\link{defineSpecies}} for an example
 #'
@@ -14,21 +13,14 @@
 #'
 #'@export
 # Locations and years get added when you phenotype in them for the first time
-phenotype <- function(sEnv=NULL, plotType="Standard", nRep=1, popID=NULL, locations=1, years=NULL, parms=NULL){
-  if(!is.null(parms)){
-    for (n in 1:length(parms)){
-      assign(names(parms)[n], parms[[n]])
-    }
-  }
+phenotype <- function(sEnv=NULL, plotType="Standard", nRep=1, popID=NULL, locations=1, years=NULL){
   phenotype.func <- function(bsl, plotType, nRep, popID, locations, years){
     errorVar <- bsl$varParms$plotTypeErrVars[plotType] / nRep
     names(errorVar) <- NULL
     # When to phenotype
-    if (is.null(years)) years=max(ncol(bsl$yearEffects), 1)
+    if (is.null(years)) years <- max(ncol(bsl$yearEffects), 1)
     # Who to phenotype
-    if(is.null(popID)){
-      popID <- max(bsl$genoRec$popID)
-    }
+    if (is.null(popID)) popID <- max(bsl$genoRec$popID)
     tf <- bsl$genoRec$popID %in% popID
     nPhen <- sum(tf)
     nLoc <- length(locations)
@@ -63,9 +55,6 @@ phenotype <- function(sEnv=NULL, plotType="Standard", nRep=1, popID=NULL, locati
       vp <- bsl$varParms$gByYearVar * (1 - bsl$varParms$fracGxEAdd)
       toAdd <- matrix(stats::rnorm(nInd * nAdd, sd=sqrt(vp)), nInd)
       bsl$yearEffectsI <- cbind(bsl$yearEffectsI, toAdd)
-      if (exists("totalCost", bsl)){
-        bsl$totalCost <- bsl$totalCost + nAdd * bsl$costs$yearCost
-      }
     }
     nAdd <- max(locations) - ncol(bsl$locEffects)
     if (bsl$varParms$randLoc & nAdd > 0){
@@ -80,9 +69,6 @@ phenotype <- function(sEnv=NULL, plotType="Standard", nRep=1, popID=NULL, locati
       vp <- bsl$varParms$gByLocVar * (1 - bsl$varParms$fracGxEAdd)
       toAdd <- matrix(stats::rnorm(nInd * nAdd, sd=sqrt(vp)), nInd)
       bsl$locEffectsI <- cbind(bsl$locEffectsI, toAdd)
-      if (exists("totalCost", bsl)){
-        bsl$totalCost <- bsl$totalCost + nAdd * bsl$costs$locCost
-      }
     }
     if (bsl$varParms$randLoc){
       pValue <- pValue + c(bsl$locEffects[tf, locations] + bsl$locEffectsI[tf, locations])
@@ -100,14 +86,8 @@ phenotype <- function(sEnv=NULL, plotType="Standard", nRep=1, popID=NULL, locati
     bsl$phenoRec <- rbind(bsl$phenoRec, toAdd)
 
     bsl$selCriterion <- list(popID=popID, criterion="pheno", sharing="none")
-    # Take care of costs
-    if (exists("totalCost", bsl)){
-      perPlotCost <- bsl$costs$phenoCost[plotType]
-      bsl$totalCost <- bsl$totalCost + nPhen * perPlotCost * nLoc * nYr * nRep
-    }
     return(bsl)
   }
-  
   
   if(is.null(sEnv)){
     if(exists("simEnv", .GlobalEnv)){
@@ -115,15 +95,30 @@ phenotype <- function(sEnv=NULL, plotType="Standard", nRep=1, popID=NULL, locati
     } else{
       stop("No simulation environment was passed")
     }
-  } 
+  }
   parent.env(sEnv) <- environment()
   with(sEnv, {
-    if(nCore > 1){
-      sfInit(parallel=T, cpus=nCore)
-      sims <- sfLapply(sims, phenotype.func, plotType=plotType, nRep=nRep, popID=popID, locations=locations, years=years)
-      sfStop()
-    }else{
-      sims <- lapply(sims, phenotype.func, plotType=plotType, nRep=nRep, popID=popID, locations=locations, years=years)
+    if (exists("totalCost")){
+      if (is.null(years)) years <- max(costs$nYear, 1)
+      costs$popID <- ifelse(is.null(popID), max(budgetRec$popID), popID)
+      totalCost <- totalCost + sum(budgetRec$popID %in% costs$popID) * costs$phenoCost[plotType] * length(locations) * length(years) * nRep
+      if (max(years) > costs$nYear){
+        totalCost <- totalCost + (max(years) - costs$nYear) * costs$yearCost
+        costs$nYear <- max(years)
+      }
+      if (max(locations) > costs$nLoc){
+        totalCost <- totalCost + (max(locations) - costs$nLoc) * costs$locCost
+        costs$nLoc <- max(locations)
+      }
+    }
+    if (!onlyCost){
+      if(nCore > 1){
+        sfInit(parallel=T, cpus=nCore)
+        sims <- sfLapply(sims, phenotype.func, plotType=plotType, nRep=nRep, popID=popID, locations=locations, years=years)
+        sfStop()
+      }else{
+        sims <- lapply(sims, phenotype.func, plotType=plotType, nRep=nRep, popID=popID, locations=locations, years=years)
+      }
     }
   })
 }

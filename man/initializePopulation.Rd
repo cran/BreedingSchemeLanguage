@@ -4,17 +4,15 @@
 \alias{initializePopulation}
 \title{Create a founder population}
 \usage{
-initializePopulation(sEnv = NULL, nInd = 100, founderHapsInDiploids = F,
-  parms = NULL)
+initializePopulation(sEnv = NULL, nInd = 100,
+  founderHapsInDiploids = F)
 }
 \arguments{
-\item{sEnv}{the environment that BSL functions operate in. Default is "simEnv" so use that to avoid specifying when calling functions}
+\item{sEnv}{the environment that BSL functions operate in. If NULL, the default \code{simEnv} is attempted}
 
-\item{nInd}{population size}
+\item{nInd}{population size (default:100)}
 
 \item{founderHapsInDiploids}{set to TRUE if you have uploaded phased diploid data in defineSpecies}
-
-\item{parms}{an optional named list or vector. Objects with those names will be created with the corresponding values. A way to pass values that are not predetermined by the script.}
 }
 \value{
 modifies the list sims in environment sEnv by creating a founder population

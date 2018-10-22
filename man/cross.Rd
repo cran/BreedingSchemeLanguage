@@ -4,11 +4,11 @@
 \alias{cross}
 \title{Cross with random mating, or equal contributions, or randomly between two populations}
 \usage{
-cross(sEnv = NULL, nProgeny = 100, equalContribution = F, popID = NULL,
-  popID2 = NULL, notWithinFam = F, pedigree = NULL, parms = NULL)
+cross(sEnv = NULL, nProgeny = 100, equalContribution = F,
+  popID = NULL, popID2 = NULL, notWithinFam = F, pedigree = NULL)
 }
 \arguments{
-\item{sEnv}{the environment that BSL functions operate in. Default: "simEnv" so use that to avoid specifying when calling functions}
+\item{sEnv}{the environment that BSL functions operate in. If NULL, the default \code{simEnv} is attempted}
 
 \item{nProgeny}{the number of progenies. Default: 100}
 
@@ -20,9 +20,7 @@ cross(sEnv = NULL, nProgeny = 100, equalContribution = F, popID = NULL,
 
 \item{notWithinFam}{if TRUE, like equalContribution, all individuals are used the same number of times as parents and self-fertilization is not allowed. In addition, half- and full-sibs are not allowed to mate. Default: F}
 
-\item{pedigree}{optional two- or three-column matrix: the first two columns are the GIDs that you want to cross, the third column is the number of progeny from that cross. NOTE: pedigree supercedes the nProgeny, equalContribution, popID, popID2, and notWithinFam parameters. You have to know what you are doing to use this parameter. Default: NULL}
-
-\item{parms}{optional named list. Objects with those names will be created with the corresponding values. A way to pass values that are not predetermined by the script. Default: NULL}
+\item{pedigree}{optional two- or three-column matrix: the first two columns are the GIDs that you want to cross, the third column is the number of progeny from that cross. NOTE: pedigree supersedes the nProgeny, equalContribution, popID, popID2, and notWithinFam parameters. You have to know what you are doing to use this parameter. Default: NULL}
 }
 \value{
 modifies the list sims in environment sEnv by creating a progeny population as specified, with an incremented population number

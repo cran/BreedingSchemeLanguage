@@ -1,33 +1,29 @@
 #' Cross with random mating, or equal contributions, or randomly between two populations
 #'
-#'@param sEnv the environment that BSL functions operate in. Default: "simEnv" so use that to avoid specifying when calling functions
+#'@importFrom snowfall sfLapply sfInit sfStop
+#'
+#'@param sEnv the environment that BSL functions operate in. If NULL, the default \code{simEnv} is attempted
 #'@param nProgeny the number of progenies. Default: 100
 #'@param equalContribution if T all individuals used the same number of times as parents, if F individuals chosen at random to be parents. Default: F
 #'@param popID population ID to be crossed. Default: the last population
 #'@param popID2 population ID to be crossed with popID to make hybrids. Default: second population not used
 #'@param notWithinFam if TRUE, like equalContribution, all individuals are used the same number of times as parents and self-fertilization is not allowed. In addition, half- and full-sibs are not allowed to mate. Default: F
-#'@param pedigree optional two- or three-column matrix: the first two columns are the GIDs that you want to cross, the third column is the number of progeny from that cross. NOTE: pedigree supercedes the nProgeny, equalContribution, popID, popID2, and notWithinFam parameters. You have to know what you are doing to use this parameter. Default: NULL
-#'@param parms optional named list. Objects with those names will be created with the corresponding values. A way to pass values that are not predetermined by the script. Default: NULL
+#'@param pedigree optional two- or three-column matrix: the first two columns are the GIDs that you want to cross, the third column is the number of progeny from that cross. NOTE: pedigree supersedes the nProgeny, equalContribution, popID, popID2, and notWithinFam parameters. You have to know what you are doing to use this parameter. Default: NULL
 #'
 #'@seealso \code{\link{defineSpecies}} for an example
 #'
 #'@return modifies the list sims in environment sEnv by creating a progeny population as specified, with an incremented population number
 #'
 #'@export
-cross <- function(sEnv=NULL, nProgeny=100, equalContribution=F, popID=NULL, popID2=NULL, notWithinFam=F, pedigree=NULL, parms=NULL){
-  if(!is.null(parms)){
-    for (n in 1:length(parms)){
-      assign(names(parms)[n], parms[[n]])
-    }
-  }
-  cross.func <- function(bsl, nProgeny, equalContribution, popID, popID2){
+cross <- function(sEnv=NULL, nProgeny=100, equalContribution=F, popID=NULL, popID2=NULL, notWithinFam=F, pedigree=NULL){
+  cross.func <- function(bsl, nProgeny, equalContribution, popID, popID2, pedigree){
     locPos <- bsl$mapData$map$Pos
     if (!is.null(pedigree)){
       GID.1 <- sort(unique(c(pedigree[,1:2])))
       geno <- bsl$geno[sort(c(GID.1 * 2 - 1, GID.1 * 2)),]
       idx <- 1:length(GID.1)
       names(idx) <- GID.1
-      parents <- matrix(idx[as.character(pedigree)], nrow(pedigree))
+      parents <- matrix(idx[as.character(pedigree[,1:2])], nrow(pedigree))
       if (ncol(pedigree) > 2) parents <- cbind(parents, pedigree[,3])
       geno <- pedigreeMate(parents=parents, geno=geno, pos=locPos)
       pedigree <- cbind(matrix(GID.1[geno$pedigree], ncol=2), 0)
@@ -66,7 +62,6 @@ cross <- function(sEnv=NULL, nProgeny=100, equalContribution=F, popID=NULL, popI
       }
     }#END no pedigree was given
     bsl <- addProgenyData(bsl, geno, pedigree)
-    if (exists("totalCost", bsl)) bsl$totalCost <- bsl$totalCost + nProgeny * bsl$costs$crossCost
     return(bsl)
   }#END cross.func
   
@@ -76,15 +71,23 @@ cross <- function(sEnv=NULL, nProgeny=100, equalContribution=F, popID=NULL, popI
     } else{
       stop("No simulation environment was passed")
     }
-  } 
+  }
   parent.env(sEnv) <- environment()
   with(sEnv, {
-    if(nCore > 1){
-      snowfall::sfInit(parallel=T, cpus=nCore)
-      sims <- snowfall::sfLapply(sims, cross.func, nProgeny=nProgeny, equalContribution=equalContribution, popID=popID, popID2=popID2)
-      snowfall::sfStop()
-    } else{
-      sims <- lapply(sims, cross.func, nProgeny=nProgeny, equalContribution=equalContribution, popID=popID, popID2=popID2)
+    if (exists("totalCost")){
+      costs$popID <- max(budgetRec$popID) + 1
+      budgetRec <- rbind(budgetRec, data.frame(GID=max(budgetRec$GID) + 1:nProgeny, popID=rep(costs$popID, nProgeny), hasGeno=FALSE))
+      totalCost <- totalCost + nProgeny * costs$crossCost
+    }
+    
+    if (!onlyCost){
+      if(nCore > 1){
+        snowfall::sfInit(parallel=T, cpus=nCore)
+        sims <- snowfall::sfLapply(sims, cross.func, nProgeny=nProgeny, equalContribution=equalContribution, popID=popID, popID2=popID2, pedigree=pedigree)
+        snowfall::sfStop()
+      } else{
+        sims <- lapply(sims, cross.func, nProgeny=nProgeny, equalContribution=equalContribution, popID=popID, popID2=popID2, pedigree=pedigree)
+      }
     }
   })
 }
@@ -105,7 +108,7 @@ addProgenyData <- function(bsl, geno, pedigree){
   nProgeny <- nrow(geno) / 2
   M <- geno[1:nProgeny*2 - 1, bsl$mapData$effectivePos] + geno[1:nProgeny*2, bsl$mapData$effectivePos]
   nAdd <- ncol(bsl$yearEffects)
-  if (nAdd == 0){ # The user is making croses without ever having phenotyped
+  if (nAdd == 0){ # The user is making crosses without ever having phenotyped
     bsl$locEffects <- matrix(0, nrow=nrow(bsl$locEffects) + nProgeny, ncol=0)
     bsl$locEffectsI <- matrix(0, nrow=nrow(bsl$locEffectsI) + nProgeny, ncol=0)
     bsl$yearEffects <- matrix(0, nrow=nrow(bsl$yearEffects) + nProgeny, ncol=0)

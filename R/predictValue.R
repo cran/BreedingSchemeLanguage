@@ -1,22 +1,16 @@
 #'Genomic prediction
 #'
-#'@param sEnv the environment that BSL functions operate in. Default is "simEnv" so use that to avoid specifying when calling functions
+#'@param sEnv the environment that BSL functions operate in. If NULL, the default \code{simEnv} is attempted
 #'@param popID population ID to be predicted (default: the latest population)
 #'@param trainingPopID population ID to be used for training a prediction model (default: all populations with phenotype data). NOTE: if sharingInfo="none" this parameter has no effect.
 #'@param locations data from which locations should be used (default: all locations)
 #'@param years data from which years should be used (default: all years)
 #'@param sharingInfo one of "none", "markers", "pedigree".  If none, genotypic values are assumed IID. If markers or pedigree, a genomic or pedigree relationship matrix is constructed
-#'@param parms optional named list. Objects with those names will be created with the corresponding values. A way to pass values that are not predetermined by the script. Default: NULL
 #'
 #'@return modifies the list sims in environment sEnv by calculating predicted values as specified and changing the default selection criterion to use them
 #'
 #'@export
-predictValue <- function(sEnv=NULL, popID=NULL, trainingPopID=NULL, locations=NULL, years=NULL, sharingInfo=NULL, parms=NULL){
-  if(!is.null(parms)){
-    for (n in 1:length(parms)){
-      assign(names(parms)[n], parms[[n]])
-    }
-  }
+predictValue <- function(sEnv=NULL, popID=NULL, trainingPopID=NULL, locations=NULL, years=NULL, sharingInfo=NULL){
   predictValue.func <- function(bsl, popID, trainingPopID, locations, years, sharingInfo){
     if (is.null(popID)) popID <- max(bsl$genoRec$popID)
     if (is.null(sharingInfo)) sharingInfo <- bsl$selCriterion$sharing
@@ -437,10 +431,8 @@ predictValue <- function(sEnv=NULL, popID=NULL, trainingPopID=NULL, locations=NU
     bsl$predRec <- rbind(bsl$predRec, toAdd)
 
     bsl$selCriterion <- list(popID=popID, criterion="pred")
-    if (exists("totalCost", bsl)) bsl$totalCost <- bsl$totalCost + bsl$costs$predCost
     return(bsl)
   }#END predict.func
-  
   
   if(is.null(sEnv)){
     if(exists("simEnv", .GlobalEnv)){
@@ -451,12 +443,19 @@ predictValue <- function(sEnv=NULL, popID=NULL, trainingPopID=NULL, locations=NU
   } 
   parent.env(sEnv) <- environment()
   with(sEnv, {
-    if(nCore > 1){
-      snowfall::sfInit(parallel=T, cpus=nCore)
-      sims <- snowfall::sfLapply(sims, predictValue.func, popID=popID, trainingPopID=trainingPopID, locations=locations, years=years, sharingInfo=sharingInfo)
-      snowfall::sfStop()
-    }else{
-      sims <- lapply(sims, predictValue.func, popID=popID, trainingPopID=trainingPopID, locations=locations, years=years, sharingInfo=sharingInfo)
+    if (exists("totalCost")){
+      costs$popID <- ifelse(is.null(popID), max(budgetRec$popID), popID)
+      totalCost <- totalCost + costs$predCost
+    }
+    
+    if (!onlyCost){
+      if(nCore > 1){
+        snowfall::sfInit(parallel=T, cpus=nCore)
+        sims <- snowfall::sfLapply(sims, predictValue.func, popID=popID, trainingPopID=trainingPopID, locations=locations, years=years, sharingInfo=sharingInfo)
+        snowfall::sfStop()
+      }else{
+        sims <- lapply(sims, predictValue.func, popID=popID, trainingPopID=trainingPopID, locations=locations, years=years, sharingInfo=sharingInfo)
+      }
     }
   })
 }

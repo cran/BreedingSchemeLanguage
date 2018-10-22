@@ -5,20 +5,18 @@
 \title{Select individuals}
 \usage{
 select(sEnv = NULL, nSelect = 40, popID = NULL, random = F,
-  type = "Mass", parms = NULL)
+  type = "Mass")
 }
 \arguments{
-\item{sEnv}{the environment that BSL functions operate in. Default is "simEnv" so use that to avoid specifying when calling functions}
+\item{sEnv}{the environment that BSL functions operate in. If NULL, the default \code{simEnv} is attempted}
 
-\item{nSelect}{the number of selected individuals}
+\item{nSelect}{the number of selected individuals (default: 40)}
 
 \item{popID}{population ID to be selected (default: When random=T, the last population. When random=F, it is the last evaluated population)}
 
 \item{random}{assuming random selection or selection according to estimated value (T: random selection, F: selection for high value)}
 
-\item{type}{"WithinFamily" or "Mass" (default: Mass). If Mass, all individuals are ranked against each other and the highest nSelect are taken.  If WithinFamily, individuals are ranked within paternal half-sib (if population was randomly mated) or full-sib (if population from selfFertilize or doubledHaploid) families. If random=T, then selection within families is random.}
-
-\item{parms}{an optional named list or vector. Objects with those names will be created with the corresponding values. A way to pass values that are not predetermined by the script.}
+\item{type}{"WithinFamily" or "Mass" (default: Mass). If Mass, all individuals are ranked against each other and the highest nSelect are taken.  If WithinFamily, individuals are ranked within paternal half-sib (if population was randomly mated) or full-sib (if population from selfFertilize or doubledHaploid) families. If random=T, then mass or within-family selection is random.  NOTE: breeding scheme budget may not be correct for within-family selection because then nSelect is per-family but the number of families varies across simulations.}
 }
 \value{
 modifies the list sims in environment sEnv by selecting individuals of the specified popID with the default selection criterion and giving those individuals a new popID

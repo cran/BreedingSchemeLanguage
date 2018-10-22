@@ -2,7 +2,7 @@
 knitr::opts_chunk$set(fig.dpi = 96)
 knitr::opts_chunk$set(echo = TRUE)
 
-## ----loadBSL-------------------------------------------------------------
+## ----loadBSL, message=FALSE----------------------------------------------
 library(BreedingSchemeLanguage)
 
 ## ----deletePriorSim------------------------------------------------------

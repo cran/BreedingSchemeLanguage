@@ -1,21 +1,15 @@
 #'Create a founder population
 #'
-#'@param sEnv the environment that BSL functions operate in. Default is "simEnv" so use that to avoid specifying when calling functions
-#'@param nInd population size
+#'@param sEnv the environment that BSL functions operate in. If NULL, the default \code{simEnv} is attempted
+#'@param nInd population size (default:100)
 #'@param founderHapsInDiploids set to TRUE if you have uploaded phased diploid data in defineSpecies
-#'@param parms an optional named list or vector. Objects with those names will be created with the corresponding values. A way to pass values that are not predetermined by the script.
 #'
 #'@seealso \code{\link{defineSpecies}} for an example
 #'
 #'@return modifies the list sims in environment sEnv by creating a founder population
 #'
 #'@export
-initializePopulation <- function(sEnv=NULL, nInd=100, founderHapsInDiploids=F, parms=NULL){
-  if(!is.null(parms)){
-    for (n in 1:length(parms)){
-      assign(names(parms)[n], parms[[n]])
-    }
-  }
+initializePopulation <- function(sEnv=NULL, nInd=100, founderHapsInDiploids=F){
   initializePopulation.func <- function(data, nInd, founderHapsInDiploids){
     seed <- round(stats::runif(1, 0, 1e9))
     md <- data$mapData
@@ -64,12 +58,17 @@ initializePopulation <- function(sEnv=NULL, nInd=100, founderHapsInDiploids=F, p
   } 
   parent.env(sEnv) <- environment()
   with(sEnv, {
-    if(nCore > 1){
-      snowfall::sfInit(parallel=T, cpus=nCore)
-      sims <- snowfall::sfLapply(sims, initializePopulation.func, nInd=nInd, founderHapsInDiploids=founderHapsInDiploids)
-      snowfall::sfStop()
-    }else{
-      sims <- lapply(sims, initializePopulation.func, nInd=nInd, founderHapsInDiploids=founderHapsInDiploids)
+    if (exists("totalCost")){
+      budgetRec <- data.frame(GID=1:nInd, popID=0, hasGeno=FALSE)
+    }
+    if (!onlyCost){
+      if(nCore > 1){
+        snowfall::sfInit(parallel=T, cpus=nCore)
+        sims <- snowfall::sfLapply(sims, initializePopulation.func, nInd=nInd, founderHapsInDiploids=founderHapsInDiploids)
+        snowfall::sfStop()
+      }else{
+        sims <- lapply(sims, initializePopulation.func, nInd=nInd, founderHapsInDiploids=founderHapsInDiploids)
+      }
     }
   })
 }
